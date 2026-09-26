@@ -21,6 +21,7 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+    
     - name: Create Debug Keystore
       run: |
         keytool -genkey -v -keystore debug.keystore \
@@ -29,11 +30,29 @@ jobs:
           -keypass android \
           -storepass android \
           -dname "CN=Android Debug,O=Android,C=US"
+    
     - name: Build Debug APK with Gradle
       run: gradle assembleDebug --no-daemon
-
+    
+    - name: Extract APK Version
+      id: version
+      run: |
+        VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | grep -oP '"\K[^"]+')
+        VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | grep -oP '= \K[0-9]+')
+        echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+        echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+        echo "APK Version: $VERSION_NAME (Build: $VERSION_CODE)"
+    
     - name: Upload Debug APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: LocalTube-APK
+        name: LocalTube-APK-v${{ steps.version.outputs.version_name }}
         path: app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 30
+
+    - name: Create Release Summary
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ steps.version.outputs.version_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Code**: ${{ steps.version.outputs.version_code }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **APK Path**: app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_STEP_SUMMARY
