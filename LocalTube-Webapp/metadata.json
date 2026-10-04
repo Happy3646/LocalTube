@@ -1,0 +1,6 @@
+{
+  "name": "LocalTube Video Player",
+  "description": "YouTube-inspired local video player with persistent folder memory, Up Next auto-play, timestamp resume, watch history logging, and custom video tagging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

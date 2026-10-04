@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LocalTube Video Player</title>
+  <meta name="description" content="YouTube-inspired local video player with persistent folder memory, Up Next auto-play, timestamp resume, watch history, custom tags, and canvas thumbnails." />
+  <meta property="og:title" content="LocalTube Video Player" />
+  <meta property="og:description" content="YouTube-inspired local video player with persistent folder memory, Up Next auto-play, timestamp resume, watch history, custom tags, and canvas thumbnails." />
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ============ RECONNECT BANNER (PERSISTENT MEMORY) ============ -->
+  <div id="reconnectBanner" class="reconnect-banner" style="display: none;">
+    <div class="reconnect-banner__content">
+      <div class="reconnect-banner__info">
+        <svg viewBox="0 0 24 24" width="22" height="22" class="reconnect-banner__icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 11 12 17 15 14" stroke="currentColor" stroke-width="2" fill="none"/><line x1="9" y1="14" x2="15" y2="14" stroke="currentColor" stroke-width="2"/></svg>
+        <div class="reconnect-banner__text">
+          <span class="reconnect-banner__tag">Saved Folder Found</span>
+          <p class="reconnect-banner__msg">Restore access to <strong id="savedFolderNameLabel">your previous folder</strong> with 1-click.</p>
+        </div>
+      </div>
+      <div class="reconnect-banner__actions">
+        <button id="reconnectFolderBtn" class="btn btn--accent-green">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M23 4v6h-6M1 20v-6h6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          <span>Re-connect Folder</span>
+        </button>
+        <button id="forgetFolderBtn" class="btn btn--ghost" title="Forget saved directory">
+          <svg viewBox="0 0 24 24" width="15" height="15"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          <span>Forget</span>
+        </button>
+        <button id="closeBannerBtn" class="icon-btn icon-btn--sm" aria-label="Dismiss banner">
+          <svg viewBox="0 0 24 24" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HEADER / TOPBAR ============ -->
+  <header class="topbar">
+    <div class="topbar__left">
+      <button id="hamburgerBtn" class="icon-btn" title="Menu" aria-label="Toggle menu">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+
+      <button id="topbarBackBtn" class="topbar__back-btn" style="display:none;" title="Back to All Videos">
+        <svg viewBox="0 0 24 24" width="16" height="16"><polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Back</span>
+      </button>
+
+      <div class="logo" id="logoHomeBtn" title="LocalTube Home">
+        <div class="logo__badge">
+          <div class="logo__play-triangle"></div>
+        </div>
+        <span class="logo__text">Local<b>Tube</b></span>
+        <span class="logo__tag">OFFLINE</span>
+      </div>
+    </div>
+
+    <div class="topbar__center">
+      <div class="search-wrap" id="searchWrap">
+        <div class="search-bar-inner">
+          <div class="search-input-wrap">
+            <input id="searchInput" type="text" class="search-input" placeholder="Search your local video library..." autocomplete="off">
+            <button id="searchClearBtn" class="search-clear-btn" aria-label="Clear search" title="Clear search" style="display: none;">
+              <svg viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <button class="search-btn" id="searchBtn" aria-label="Search" title="Search">
+            <svg viewBox="0 0 24 24" width="19" height="19"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div id="searchSuggestions" class="search-suggestions" style="display: none;"></div>
+      </div>
+    </div>
+
+    <div class="topbar__right">
+      <!-- Shuffle / Mix Button in Topbar -->
+      <button id="topbarShuffleBtn" class="btn btn--shuffle" title="Mix / Randomize video cards order">
+        <svg viewBox="0 0 24 24" width="16" height="16" class="shuffle-icon"><polyline points="16 3 21 3 21 8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><line x1="4" y1="20" x2="21" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="21 16 21 21 16 21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4" y1="4" x2="9" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="shuffle-label">Mix Content</span>
+      </button>
+
+      <span id="folderLabel" class="folder-label" title="Active directory"></span>
+
+      <button id="selectFolderBtn" class="btn btn--primary" title="Open directory picker or file chooser">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg>
+        <span>Select Folder</span>
+      </button>
+
+      <!-- Fallback hidden file input for standard directory selection -->
+      <input type="file" id="folderInput" webkitdirectory directory multiple hidden>
+    </div>
+  </header>
+
+  <div class="app-body">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar__nav">
+        <!-- All Videos -->
+        <button class="sidebar__item is-active" data-view="all" id="navAllBtn">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="2 17 12 22 22 17" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="2 12 12 17 22 12" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          <span>All Videos</span>
+          <span class="sidebar__counter" id="sideStatTotal">0</span>
+        </button>
+
+        <!-- Untagged Videos Library -->
+        <button class="sidebar__item" data-view="untagged" id="navUntaggedBtn">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="3 3"/><line x1="7" y1="7" x2="7.01" y2="7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="3" y1="21" x2="21" y2="3" stroke="currentColor" stroke-width="2"/></svg>
+          <span>Untagged</span>
+          <span class="sidebar__counter" id="sideStatUntagged">0</span>
+        </button>
+
+        <!-- Watch History -->
+        <button class="sidebar__item" data-view="history" id="navHistoryBtn">
+          <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>History</span>
+          <span class="sidebar__counter" id="sideStatHistory">0</span>
+        </button>
+
+        <!-- Shorts -->
+        <button class="sidebar__item" data-view="shorts" id="navShortsBtn">
+          <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3" stroke="currentColor" stroke-width="2" fill="none"/><polygon points="10,8 15,12 10,16" fill="currentColor"/></svg>
+          <span>Shorts</span>
+        </button>
+
+        <!-- Channels Button (YouTube Style - Opens 4 Choices) -->
+        <button class="sidebar__item" data-view="channels-menu" id="navChannelsBtn" title="Channels">
+          <svg viewBox="0 0 24 24"><path d="M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H4V9h16v10zM10 10.5v7l6-3.5z" fill="currentColor"/><path d="M18 3H6c-.55 0-1 .45-1 1s.45 1 1 1h12c.55 0 1-.45 1-1s-.45-1-1-1z" fill="currentColor"/></svg>
+          <span>Channels</span>
+          <span class="sidebar__counter" id="sideStatChannels">0</span>
+        </button>
+
+        <!-- Settings Button -->
+        <button class="sidebar__item" data-view="settings" id="navSettingsBtn" title="Settings & Preferences">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Channels Category Section (YouTube Subscriptions Style) -->
+      <div class="sidebar__section" id="sidebarChannelsSection">
+        <div class="sidebar__section-header">
+          <h4 class="sidebar__heading">Channels</h4>
+          <button id="sidebarNewChannelBtn" class="sidebar__icon-action" title="Create New Channel">
+            <svg viewBox="0 0 24 24" width="15" height="15"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        
+        <!-- Channels Quick Navigation Sub-items -->
+        <div class="sidebar__channels-subnav">
+          <button class="sidebar__sub-item" id="sideSubAllChannels" data-view="all-channels">
+            <svg viewBox="0 0 24 24" width="15" height="15"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>All Channels</span>
+          </button>
+          <button class="sidebar__sub-item" id="sideSubSubscribed" data-view="subscribed-channels">
+            <svg viewBox="0 0 24 24" width="15" height="15"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2"/></svg>
+            <span>Subscribed</span>
+            <span class="sidebar__sub-badge" id="sideSubSubscribedCount">0</span>
+          </button>
+          <button class="sidebar__sub-item" id="sideSubNoChannel" data-view="videos-without-channel">
+            <svg viewBox="0 0 24 24" width="15" height="15"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" fill="none" stroke-dasharray="3 3"/><path d="M12 12c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-1.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/></svg>
+            <span>Without Channel</span>
+            <span class="sidebar__sub-badge" id="sideSubNoChannelCount">0</span>
+          </button>
+        </div>
+
+        <!-- Dynamic List of User's Channels -->
+        <div class="sidebar__channels-list" id="sidebarChannelsList">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Playlists Section (Containing Liked Videos, Watch Later, and Custom Playlists) -->
+      <div class="sidebar__section" id="sidebarPlaylistsSection">
+        <div class="sidebar__section-header">
+          <h4 class="sidebar__heading">Playlists</h4>
+          <button id="sidebarNewPlaylistBtn" class="sidebar__icon-action" title="Create New Playlist">
+            <svg viewBox="0 0 24 24" width="15" height="15"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <!-- System Core Playlists (Liked Videos & Watch Later) -->
+        <div class="sidebar__system-playlists">
+          <!-- Liked Videos (YouTube Style) -->
+          <button class="sidebar__item sidebar__item--playlist" data-view="liked" id="navLikedBtn">
+            <svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Liked Videos</span>
+            <span class="sidebar__counter" id="sideStatLiked">0</span>
+          </button>
+
+          <!-- Watch Later -->
+          <button class="sidebar__item sidebar__item--playlist" data-view="watch-later" id="navWatchLaterBtn">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span>Watch Later</span>
+            <span class="sidebar__counter" id="sideStatWatchLater">0</span>
+          </button>
+        </div>
+
+        <!-- Dynamic User-Created Playlists -->
+        <div class="sidebar__playlists-list" id="sidebarPlaylistsList">
+          <!-- Dynamic Custom User Playlists -->
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <div class="sidebar__section">
+        <h4 class="sidebar__heading">Storage & Memory</h4>
+        <div class="sidebar__stats-card">
+          <div class="stats-row">
+            <span class="stats-label">Active Folder:</span>
+            <span class="stats-value" id="statFolderName">None</span>
+          </div>
+          <div class="stats-row">
+            <span class="stats-label">Total Videos:</span>
+            <span class="stats-value" id="statTotalVideos">0</span>
+          </div>
+          <div class="stats-row">
+            <span class="stats-label">Total Size:</span>
+            <span class="stats-value" id="statTotalSize">0 MB</span>
+          </div>
+          <div class="stats-row">
+            <span class="stats-label">Raw Video:</span>
+            <span class="stats-value stats-value--highlight" id="statTotalDuration">0.0 hrs</span>
+          </div>
+          <div class="stats-row">
+            <span class="stats-label">Folder Memory:</span>
+            <span class="stats-value stats-value--active" id="statMemoryStatus">IndexedDB</span>
+          </div>
+        </div>
+
+        <div class="sidebar__actions">
+          <button id="sidebarChangeFolderBtn" class="btn btn--outline-sm">
+            <svg viewBox="0 0 24 24" width="14" height="14"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Change Folder</span>
+          </button>
+          <button id="sidebarForgetFolderBtn" class="btn btn--ghost-sm" style="display:none;" title="Clear remembered directory handle">
+            <svg viewBox="0 0 24 24" width="14" height="14"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Forget Folder</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <div class="sidebar__footer">
+        <p>Zero tracking. Local playback with timestamp resume, history, and custom tags.</p>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN CONTENT AREA ============ -->
+    <main class="main" id="mainArea">
+
+      <!-- ================= SETTINGS & PREFERENCES VIEW ================= -->
+      <section id="settingsView" class="settings-view" style="display: none;">
+        <div class="settings-header">
+          <h1 class="view-title">Settings & Preferences</h1>
+          <p class="settings-subtitle">Manage appearance, video grid columns, backup portability, user guide, and duplicate video detection.</p>
+        </div>
+
+        <div class="settings-container">
+          <!-- Card 1: Appearance & Layout -->
+          <div class="settings-card">
+            <div class="settings-card__header">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.38 5.38 0 0 1-4.4 4.4 5.38 5.38 0 0 1-5.38-5.38c0-1.64.74-3.12 1.9-4.1A9 9 0 0 0 12 3z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <h2>Appearance & Grid Layout</h2>
+            </div>
+            <div class="settings-card__body">
+              <div class="setting-row">
+                <div class="setting-info">
+                  <strong>Color Theme</strong>
+                  <span>Switch between Dark Mode and Light Mode</span>
+                </div>
+                <button id="themeToggleBtn" class="btn btn--secondary btn--sm">
+                  <span id="themeToggleLabel">🌙 Dark Mode</span>
+                </button>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <strong>Video Grid Columns</strong>
+                  <span>Choose how many columns of videos to display in your library (Min 1, Max 4)</span>
+                </div>
+                <div class="column-selector-buttons">
+                  <button class="col-btn" data-cols="1">1 Col</button>
+                  <button class="col-btn" data-cols="2">2 Cols</button>
+                  <button class="col-btn is-active" data-cols="3">3 Cols</button>
+                  <button class="col-btn" data-cols="4">4 Cols</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Duplicate Video Detection -->
+          <div class="settings-card">
+            <div class="settings-card__header">
+              <svg viewBox="0 0 24 24" width="20" height="20"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <h2 id="duplicateHeaderTitle">Duplicate Video Detector (4+ Continuous Words)</h2>
+            </div>
+            <div class="settings-card__body">
+              <div class="setting-row">
+                <div class="setting-info">
+                  <strong>Continuous Word Match Threshold</strong>
+                  <span>Choose how many continuous words must match in video titles to identify potential duplicates</span>
+                </div>
+                <div class="column-selector-buttons" id="duplicateWordCountSelector">
+                  <button class="dup-word-btn" data-words="3">3 Words</button>
+                  <button class="dup-word-btn is-active" data-words="4">4 Words</button>
+                  <button class="dup-word-btn" data-words="5">5 Words</button>
+                  <button class="dup-word-btn" data-words="6">6 Words</button>
+                </div>
+              </div>
+              <button id="scanDuplicatesBtn" class="btn btn--primary" style="align-self: flex-start; margin-top: 8px;">
+                <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"/></svg>
+                <span id="scanBtnLabel">Scan for Duplicates (4+ Continuous Words)</span>
+              </button>
+              <div id="duplicateResultsContainer" class="duplicate-results-container" style="display: none;">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Data Backup & Portability -->
+          <div class="settings-card">
+            <div class="settings-card__header">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2"/></svg>
+              <h2>Data Backup & Portability</h2>
+            </div>
+            <div class="settings-card__body">
+              <p class="setting-desc">Export or import all your custom tags, channel associations, playlists, and watch history as a JSON file.</p>
+              <div class="setting-actions-row">
+                <button id="sidebarExportDataBtn" class="btn btn--secondary">
+                  <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2"/></svg>
+                  <span>Export Metadata (JSON)</span>
+                </button>
+                <button id="sidebarImportDataBtn" class="btn btn--outline">
+                  <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="2"/></svg>
+                  <span>Import Metadata (JSON)</span>
+                </button>
+                <input type="file" id="importMetadataFileInput" accept=".json,application/json" style="display:none;" aria-label="Import metadata JSON file">
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: User Guide & Feature Manual -->
+          <div class="settings-card">
+            <div class="settings-card__header">
+              <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="16" x2="12" y2="12" stroke="currentColor" stroke-width="2"/><line x1="12" y1="8" x2="12.01" y2="8" stroke="currentColor" stroke-width="2"/></svg>
+              <h2>User Guide & Feature Manual</h2>
+            </div>
+            <div class="settings-card__body guide-body">
+              <div class="guide-item">
+                <strong>⏱️ Timestamp Resume</strong>
+                <p>LocalTube automatically remembers your exact playback position for every video. Red progress bars on thumbnails show how far you've watched, and clicking a video prompts you to resume where you left off.</p>
+              </div>
+              <div class="guide-item">
+                <strong>▶️ Up Next Auto-Play</strong>
+                <p>When enabled in the player, clicking a video or reaching the end of playback will automatically stream the next video in your active queue or filter list.</p>
+              </div>
+              <div class="guide-item">
+                <strong>🏷️ Custom Tagging</strong>
+                <p>Add custom tags to any video by clicking the tag badge. Tags appear as filter chips at the top of your library for instant one-click filtering.</p>
+              </div>
+              <div class="guide-item">
+                <strong>📜 Watch History</strong>
+                <p>Chronological logging of every video you watch. View your watch history anytime from the sidebar and clear it with a single click.</p>
+              </div>
+              <div class="guide-item">
+                <strong>📁 Folder Memory (IndexedDB)</strong>
+                <p>Directory handles are securely remembered using browser IndexedDB. With 1-click on the reconnect banner, you instantly restore access to your video folders without re-selecting.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 1. BROWSE / MULTI-COLUMN GRID VIEW ================= -->
+      <section id="browseView" class="browse-view">
+        <!-- Filter Chips Bar with Smooth Left/Right Scroll Arrows -->
+        <div class="filter-bar">
+          <button id="filterScrollLeft" class="filter-scroll-btn filter-scroll-btn--left" title="Scroll left" aria-label="Scroll left">
+            <svg viewBox="0 0 24 24" width="16" height="16"><polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+
+          <div class="filter-chips-container" id="filterChipsContainer">
+            <div class="filter-chips" id="filterChips">
+              <button class="chip is-active" data-filter="all" id="chipAll">All</button>
+              
+              <!-- Dynamic Custom Tag Chips Container -->
+              <div id="dynamicTagChips" class="dynamic-tag-chips"></div>
+
+              <button class="chip" data-sort="name" id="chipSortName">Sort: Name</button>
+              <button class="chip" data-sort="size" id="chipSortSize">Sort: Size</button>
+            </div>
+          </div>
+
+          <button id="filterScrollRight" class="filter-scroll-btn filter-scroll-btn--right" title="Scroll right" aria-label="Scroll right">
+            <svg viewBox="0 0 24 24" width="16" height="16"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+
+          <div class="filter-count" id="filterCountLabel">0 videos</div>
+        </div>
+
+        <!-- Section Title & Status -->
+        <div class="main-header">
+          <div class="main-header__left">
+            <h1 class="view-title" id="viewTitle">All Videos</h1>
+            <span id="shuffleStatusBadge" class="shuffle-badge" style="display:none;">Shuffled Order</span>
+            <span id="tagFilterBadge" class="tag-filter-badge" style="display:none;"></span>
+          </div>
+
+          <!-- History View Actions (Clear History) -->
+          <div id="historyActionsHeader" class="header-action-group" style="display:none;">
+            <button id="clearHistoryBtn" class="btn btn--danger-sm" title="Clear all local watch history">
+              <svg viewBox="0 0 24 24" width="14" height="14"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <span>Clear Watch History</span>
+            </button>
+          </div>
+
+          <!-- Tag Filter Actions (Delete Tag Globally) -->
+          <div id="tagActionsHeader" class="header-action-group" style="display:none;">
+            <button id="deleteActiveTagBtn" class="btn btn--danger-sm" title="Delete this tag from all videos in your library">
+              <svg viewBox="0 0 24 24" width="14" height="14"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <span>Delete Tag</span>
+            </button>
+          </div>
+
+          <!-- Playlist Actions (Delete Playlist Library) -->
+          <div id="playlistActionsHeader" class="header-action-group" style="display:none;">
+            <button id="deleteActivePlaylistBtn" class="btn btn--danger-sm" title="Delete this playlist library">
+              <svg viewBox="0 0 24 24" width="14" height="14"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <span>Delete Playlist</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state is-visible" id="emptyState">
+          <div class="empty-state__icon-wrap">
+            <svg viewBox="0 0 24 24" width="48" height="48"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></svg>
+          </div>
+          <h2 class="empty-state__title">Your Local Library is Ready</h2>
+          <p class="empty-state__desc">
+            Select any folder on your device. LocalTube automatically remembers your folder with IndexedDB persistent memory, extracts instant canvas thumbnails, resumes watched positions, and enables full tag filtering.
+          </p>
+          <div class="empty-state__actions">
+            <button id="emptySelectBtn" class="btn btn--primary btn--lg">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <span>Select Video Folder</span>
+            </button>
+          </div>
+
+          <div class="empty-state__features">
+            <div class="feature-item">
+              <div class="feature-item__icon">⏱️</div>
+              <div class="feature-item__text">
+                <strong>Timestamp Resume</strong>
+                <span>Remembers exact playback positions with red thumbnail progress bars.</span>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-item__icon">▶️</div>
+              <div class="feature-item__text">
+                <strong>Up Next Auto-Play</strong>
+                <span>YouTube-style autoplay toggle streams continuous video queues.</span>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-item__icon">🏷️</div>
+              <div class="feature-item__text">
+                <strong>Custom Tagging</strong>
+                <span>Tag any video and dynamically filter your library instantly.</span>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-item__icon">📜</div>
+              <div class="feature-item__text">
+                <strong>Watch History</strong>
+                <span>Automatic chronological logging with easy 1-click clearing.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- YouTube Channel Page Header & Cover (Active when viewing a specific channel) -->
+        <div id="channelHeroBanner" class="channel-hero" style="display: none;">
+          <input type="file" id="channelHeroLogoFileInput" accept="image/*" style="display: none;">
+          <div class="channel-hero__cover" id="channelHeroCover"></div>
+          <div class="channel-hero__body">
+            <div class="channel-hero__avatar-wrap">
+              <div class="channel-hero__avatar" id="channelHeroAvatar" title="Click to change channel logo">C</div>
+              <button id="channelHeroChangeLogoBtn" class="channel-hero__avatar-badge-btn" title="Choose image from local storage for channel logo">
+                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              </button>
+            </div>
+            <div class="channel-hero__info">
+              <div class="channel-hero__title-row">
+                <h1 class="channel-hero__name" id="channelHeroName">Channel Name</h1>
+                <button id="channelHeroSubBtn" class="watch-subscribe-btn" title="Subscribe to channel">
+                  <svg viewBox="0 0 24 24" width="16" height="16" class="sub-bell-icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2"/></svg>
+                  <span id="channelHeroSubLabel">Subscribe</span>
+                </button>
+              </div>
+              <div class="channel-hero__meta-row">
+                <span class="channel-hero__handle" id="channelHeroHandle">@channel</span>
+                <span class="channel-hero__bullet">•</span>
+                <span class="channel-hero__stat" id="channelHeroVideoCount">0 videos</span>
+                <span class="channel-hero__bullet">•</span>
+                <span class="channel-hero__stat" id="channelHeroSubStatus">Unsubscribed</span>
+              </div>
+              <p class="channel-hero__desc" id="channelHeroDesc">Custom local video channel.</p>
+              
+              <div class="channel-hero__actions">
+                <button id="channelHeroAddVideosBtn" class="btn btn--primary btn--sm" title="Add videos from your library to this channel">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  <span>Add Videos to Channel</span>
+                </button>
+                <button id="channelHeroChangeLogoActionBtn" class="btn btn--secondary btn--sm" title="Upload custom channel logo from your local storage">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                  <span>Change Logo</span>
+                </button>
+                <button id="channelHeroEditBtn" class="btn btn--secondary btn--sm" title="Edit channel details">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                  <span>Edit Channel</span>
+                </button>
+                <button id="channelHeroDeleteBtn" class="btn btn--danger-sm" title="Delete this channel">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                  <span>Delete Channel</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Channel Tabs (YouTube Style: Videos / About) -->
+          <div class="channel-tabs">
+            <button class="channel-tab is-active" id="channelTabVideos">Videos</button>
+            <button class="channel-tab" id="channelTabAbout">About</button>
+          </div>
+          
+          <div id="channelAboutSection" class="channel-about-box" style="display: none;">
+            <h4>About this Channel</h4>
+            <p id="channelAboutText">No details provided yet.</p>
+            <div class="channel-about-stats">
+              <span id="channelAboutCreated">Created: Recently</span>
+              <span id="channelAboutTotalVideos">Videos: 0</span>
+              <span id="channelAboutStatus">Status: Active Local Channel</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- All Channels Directory View (Active when in 'all-channels' view) -->
+        <div id="allChannelsDirectory" class="all-channels-directory" style="display: none;">
+          <div class="all-channels-header">
+            <div class="all-channels-header__text">
+              <h2 class="all-channels-title">Your Channels</h2>
+              <p class="all-channels-desc">Create custom channels, organize videos, and subscribe to your favorite collections just like YouTube.</p>
+            </div>
+            <button id="channelsDirNewBtn" class="btn btn--primary">
+              <svg viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <span>Create Channel</span>
+            </button>
+          </div>
+          <div class="channels-grid" id="channelsGrid">
+            <!-- Dynamic Channel Cards -->
+          </div>
+        </div>
+
+        <!-- Video Grid Container -->
+        <div class="video-grid" id="videoGrid"></div>
+
+        <!-- YouTube Shorts Immersive Scroll Feed Container -->
+        <div id="shortsFeedContainer" class="shorts-feed-container" style="display: none;">
+          <div class="shorts-scroll-viewport" id="shortsScrollViewport">
+            <!-- Dynamically populated short cards -->
+          </div>
+          <div class="shorts-nav-buttons">
+            <button id="shortsNavPrevBtn" class="shorts-nav-btn" title="Previous Short (Up Arrow)" aria-label="Previous Short">
+              <svg viewBox="0 0 24 24" width="22" height="22"><polyline points="18 15 12 9 6 15" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+            </button>
+            <button id="shortsNavNextBtn" class="shorts-nav-btn" title="Next Short (Down Arrow)" aria-label="Next Short">
+              <svg viewBox="0 0 24 24" width="22" height="22"><polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Multi-Select Floating Action Bar (Active in Untagged & Without Channel views) -->
+        <div id="multiSelectBar" class="multi-select-bar" style="display: none;">
+          <div class="multi-select-bar__inner">
+            <div class="multi-select-bar__left">
+              <div class="multi-select-bar__badge">
+                <svg viewBox="0 0 24 24" width="18" height="18"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="multi-select-bar__text">
+                <span id="multiSelectCount" class="multi-select-bar__count">0 videos selected</span>
+                <span class="multi-select-bar__subtext">Right-click any video to toggle selection</span>
+              </div>
+            </div>
+            <div class="multi-select-bar__actions">
+              <button id="multiSelectSelectAllBtn" class="btn btn--secondary btn--sm" title="Select all visible videos">
+                <svg viewBox="0 0 24 24" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="9 12 11 14 15 10" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                <span>Select All</span>
+              </button>
+              <button id="multiSelectTagBtn" class="btn btn--secondary btn--sm" title="Apply tags to all selected videos">
+                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="currentColor" stroke-width="2" fill="none"/><line x1="7" y1="7" x2="7.01" y2="7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                <span>Apply Tags</span>
+              </button>
+              <button id="multiSelectChannelBtn" class="btn btn--secondary btn--sm" title="Assign channel to all selected videos">
+                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H4V9h16v10zM10 10.5v7l6-3.5z" fill="currentColor"/></svg>
+                <span>Assign Channel</span>
+              </button>
+              <button id="multiSelectClearBtn" class="btn btn--ghost-sm" title="Clear selection" aria-label="Clear selection">
+                <svg viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Clear</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. YOUTUBE AUTHENTIC WATCH PAGE VIEW ================= -->
+      <section id="watchView" class="watch-view" style="display: none;">
+        <div class="watch-layout">
+
+          <!-- LEFT COLUMN: PRIMARY VIDEO STAGE & METADATA -->
+          <div class="watch-primary">
+            <!-- Video Player Stage -->
+            <div class="player" id="player">
+              <video id="mainVideo" class="player__video" preload="none" playsinline></video>
+
+              <!-- Resume Toast Indicator -->
+              <div id="resumeToast" class="resume-toast" style="display: none;">
+                <svg viewBox="0 0 24 24" width="16" height="16"><polyline points="1 4 1 10 7 10" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                <span id="resumeToastText">Resumed from 1:24</span>
+              </div>
+
+              <!-- Big Center Play Overlay -->
+              <div class="player__center-overlay" id="centerPlayOverlay">
+                <div class="player__center-play-btn">
+                  <svg viewBox="0 0 24 24" width="36" height="36"><polygon points="6,4 20,12 6,20" fill="currentColor"/></svg>
+                </div>
+              </div>
+
+              <!-- Custom Player Control Bar -->
+              <div class="player__controls" id="playerControls">
+                <!-- Seek Scrubber -->
+                <div class="seek-row">
+                  <input type="range" id="seekBar" class="seek-bar" min="0" max="100" value="0" step="0.1">
+                </div>
+
+                <div class="controls-row">
+                  <div class="controls-row__left">
+                    <button id="prevVideoBtn" class="icon-btn" aria-label="Previous video" title="Previous video (P)">
+                      <svg viewBox="0 0 24 24" width="20" height="20"><polygon points="19,20 9,12 19,4" fill="currentColor"/><line x1="5" y1="4" x2="5" y2="20" stroke="currentColor" stroke-width="2"/></svg>
+                    </button>
+
+                    <button id="seekBackBtn" class="icon-btn" aria-label="Rewind 10 seconds" title="Rewind 10 seconds (Left Arrow / J)">
+                      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="currentColor"/><text x="12" y="14.5" font-size="7" font-weight="bold" font-family="sans-serif" text-anchor="middle" fill="currentColor">10</text></svg>
+                    </button>
+
+                    <button id="playPauseBtn" class="icon-btn" aria-label="Play/Pause" title="Play / Pause (Space / K)">
+                      <svg id="iconPlay" viewBox="0 0 24 24" width="26" height="26"><polygon points="6,4 20,12 6,20" fill="currentColor"/></svg>
+                      <svg id="iconPause" viewBox="0 0 24 24" width="26" height="26" style="display:none"><rect x="5" y="4" width="5" height="16" fill="currentColor"/><rect x="14" y="4" width="5" height="16" fill="currentColor"/></svg>
+                    </button>
+
+                    <button id="seekForwardBtn" class="icon-btn" aria-label="Forward 10 seconds" title="Forward 10 seconds (Right Arrow / L)">
+                      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" fill="currentColor"/><text x="12" y="14.5" font-size="7" font-weight="bold" font-family="sans-serif" text-anchor="middle" fill="currentColor">10</text></svg>
+                    </button>
+
+                    <button id="nextVideoBtn" class="icon-btn" aria-label="Next video" title="Next video (N)">
+                      <svg viewBox="0 0 24 24" width="20" height="20"><polygon points="5,4 15,12 5,20" fill="currentColor"/><line x1="19" y1="4" x2="19" y2="20" stroke="currentColor" stroke-width="2"/></svg>
+                    </button>
+
+                    <div class="volume-group">
+                      <button id="muteBtn" class="icon-btn" aria-label="Mute" title="Mute (M)">
+                        <svg id="iconVolume" viewBox="0 0 24 24" width="22" height="22"><path d="M4 9v6h4l5 5V4L8 9H4z" fill="currentColor"/><path d="M16 8.5a4 4 0 0 1 0 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+                        <svg id="iconMuted" viewBox="0 0 24 24" width="22" height="22" style="display:none"><path d="M4 9v6h4l5 5V4L8 9H4z" fill="currentColor"/><line x1="16" y1="9" x2="21" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="21" y1="9" x2="16" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                      </button>
+                      <input type="range" id="volumeBar" class="volume-bar" min="0" max="1" step="0.01" value="1">
+                    </div>
+
+                    <span class="time-label"><span id="timeCurrent">0:00</span> / <span id="timeDuration">0:00</span></span>
+                  </div>
+
+                  <div class="controls-row__right">
+                    <!-- Playback Speed -->
+                    <div class="speed-control">
+                      <button id="speedBtn" class="speed-btn" title="Playback speed">1x</button>
+                      <div class="speed-menu" id="speedMenu">
+                        <button data-speed="0.5">0.5x</button>
+                        <button data-speed="0.75">0.75x</button>
+                        <button data-speed="1" class="is-selected">1x (Normal)</button>
+                        <button data-speed="1.25">1.25x</button>
+                        <button data-speed="1.5">1.5x</button>
+                        <button data-speed="2">2x</button>
+                      </div>
+                    </div>
+
+                    <!-- Loop Toggle -->
+                    <button id="loopBtn" class="icon-btn" aria-label="Toggle loop" title="Loop video">
+                      <svg viewBox="0 0 24 24" width="20" height="20"><polyline points="17 1 21 5 17 9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="7 23 3 19 7 15" stroke="currentColor" stroke-width="2" fill="none"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </button>
+
+                    <!-- Fullscreen Button -->
+                    <button id="fullscreenBtn" class="icon-btn" aria-label="Fullscreen" title="Fullscreen (F)">
+                      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Video Title & Primary Actions -->
+            <div class="watch-info">
+              <h1 class="watch-title" id="watchTitle">Video Title</h1>
+
+              <!-- Dedicated Watch Tags Area: pills with remove '✕' + inline '+ Add Tag' input -->
+              <div class="watch-tags-section" id="watchTagsSection">
+                <div class="watch-tags-container" id="watchTagsContainer">
+                  <!-- Tag chips rendered here: [ Gaming ✕ ], [ Tutorial ✕ ] -->
+                </div>
+                
+                <!-- Inline Add Tag Control -->
+                <div class="inline-tag-adder" id="inlineTagAdder">
+                  <button id="inlineAddTagBtn" class="btn-inline-add-tag" title="Add a tag to this video">
+                    <svg viewBox="0 0 24 24" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                    <span>Add Tag</span>
+                  </button>
+
+                  <div class="inline-tag-input-box" id="inlineTagInputBox" style="display: none;">
+                    <input type="text" id="inlineTagInput" class="inline-tag-input" placeholder="Tag name..." maxlength="24" autocomplete="off">
+                    <button id="inlineSaveTagBtn" class="btn-inline-save" title="Save tag">
+                      <svg viewBox="0 0 24 24" width="14" height="14"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button id="inlineCancelTagBtn" class="btn-inline-cancel" title="Cancel">
+                      <svg viewBox="0 0 24 24" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="watch-action-bar">
+                <!-- Channel / Source Details (Clickable to visit channel) -->
+                <div class="watch-owner">
+                  <div class="watch-avatar" id="watchAvatar" title="Channel avatar">L</div>
+                  <div class="watch-owner__meta">
+                    <span class="watch-channel-name" id="watchChannelName" title="Visit channel">Local Library</span>
+                    <span class="watch-folder-sub" id="watchFolderInfo">Active Folder • Offline Storage</span>
+                  </div>
+                  <!-- Subscribe / Subscribed Toggle Button -->
+                  <button id="watchSubscribeBtn" class="watch-subscribe-btn" title="Subscribe to channel">
+                    <svg viewBox="0 0 24 24" width="16" height="16" class="sub-bell-icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2"/></svg>
+                    <span id="watchSubscribeLabel">Subscribe</span>
+                  </button>
+                </div>
+
+                <!-- Action Buttons: YouTube-Style Segmented Like/Dislike, Watch Later, Save, 3-dots menu, Back -->
+                <div class="watch-actions-group">
+                  <!-- Segmented Like / Dislike Group -->
+                  <div class="watch-like-dislike-group">
+                    <button id="watchLikeBtn" class="watch-segmented-btn watch-like-btn" title="I like this">
+                      <svg viewBox="0 0 24 24" width="18" height="18"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      <span id="watchLikeCount">Like</span>
+                    </button>
+                    <div class="watch-segmented-divider"></div>
+                    <button id="watchDislikeBtn" class="watch-segmented-btn watch-dislike-btn" title="I dislike this">
+                      <svg viewBox="0 0 24 24" width="18" height="18"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                  </div>
+
+                  <!-- Save to Watch Later -->
+                  <button id="watchLaterBtn" class="watch-action-pill" title="Save to Watch Later">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span id="watchLaterLabel">Watch Later</span>
+                  </button>
+
+                  <!-- Save to Playlist -->
+                  <button id="watchPlaylistBtn" class="watch-action-pill" title="Add to or create a Playlist">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M19 11H5m14-4H5m14 8H5m14 4h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="18" x2="18" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="20" x2="20" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span>Save</span>
+                  </button>
+
+                  <!-- 3 Dots Options Menu (⋮) for Clean UI -->
+                  <div class="watch-more-wrap" id="watchMoreWrap">
+                    <button id="watchMoreBtn" class="watch-action-pill watch-action-pill--icon" title="More actions" aria-label="More actions">
+                      <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
+                    </button>
+                    <div class="watch-dropdown" id="watchDropdown" style="display: none;">
+                      <button class="dropdown-item" id="watchActionAddChannel">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H4V9h16v10zM10 10.5v7l6-3.5z" fill="currentColor"/></svg>
+                        <span id="watchActionAddChannelText">Add to Channel</span>
+                      </button>
+                      <button class="dropdown-item" id="watchActionManageTags">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="currentColor" stroke-width="2" fill="none"/><line x1="7" y1="7" x2="7.01" y2="7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                        <span>Manage Tags</span>
+                      </button>
+                      <button class="dropdown-item" id="watchActionShuffleNext">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><polyline points="16 3 21 3 21 8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><line x1="4" y1="20" x2="21" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="21 16 21 21 16 21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4" y1="4" x2="9" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <span>Shuffle Next</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button id="watchBackBtn" class="watch-action-pill watch-action-pill--back" title="Back to All Videos Grid">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><polygon points="12 2 2 7 12 12 22 7 12 2" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="2 17 12 22 22 17" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="2 12 12 17 22 12" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    <span>Browse Grid</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- YouTube Styled Description / Details Box -->
+              <div class="watch-details-box">
+                <div class="watch-details-row">
+                  <span class="watch-badge" id="watchFileExtBadge">MP4</span>
+                  <span class="watch-stat" id="watchFileSize">0 MB</span>
+                  <span class="watch-bullet">•</span>
+                  <span class="watch-stat" id="watchDurationLabel">0:00</span>
+                  <span class="watch-bullet">•</span>
+                  <span class="watch-stat" id="watchFileNameLabel">filename.mp4</span>
+                </div>
+                <p class="watch-desc-text">
+                  Local offline playback with persistent folder memory, timestamp resume, and custom tags. Keyboard shortcuts: <kbd>Space</kbd>/<kbd>K</kbd> Play, <kbd>J</kbd>/<kbd>L</kbd> Seek 10s, <kbd>F</kbd> Fullscreen, <kbd>M</kbd> Mute, <kbd>N</kbd> Next, <kbd>P</kbd> Previous, <kbd>Esc</kbd> Back to Browse.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: "UP NEXT" / RECOMMENDATIONS SIDEBAR -->
+          <div class="watch-secondary">
+            <div class="up-next-header">
+              <div class="up-next-title-group">
+                <h3 class="up-next-heading">Up Next</h3>
+                <span class="up-next-count" id="upNextCount">0 videos</span>
+              </div>
+
+              <div class="up-next-controls-group">
+                <!-- NEW FEATURE: Autoplay Toggle Switch -->
+                <div class="autoplay-toggle-wrap" title="Auto-play next video when current video ends">
+                  <span class="autoplay-label">Autoplay</span>
+                  <label class="switch" for="autoplayToggle">
+                    <input type="checkbox" id="autoplayToggle" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <button id="upNextMixBtn" class="btn btn--shuffle-sm" title="Randomize Up Next queue">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><polyline points="16 3 21 3 21 8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><line x1="4" y1="20" x2="21" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="21 16 21 21 16 21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4" y1="4" x2="9" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  <span>Mix</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Up Next Vertical Card List -->
+            <div class="up-next-list" id="upNextList">
+              <!-- Dynamically populated up-next recommendation cards -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ CUSTOM TAGGING MODAL ============ -->
+  <div id="tagModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg viewBox="0 0 24 24" width="20" height="20" class="modal-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="currentColor" stroke-width="2" fill="none"/><line x1="7" y1="7" x2="7.01" y2="7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+          <h3 class="modal-title">Edit Video Tags</h3>
+        </div>
+        <button id="closeTagModalBtn" class="icon-btn icon-btn--sm" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-subtitle" id="tagModalVideoTitle">Video Title</p>
+
+        <div class="modal-section-label">Assigned Tags:</div>
+        <div class="active-tags-wrap" id="modalActiveTags">
+          <span class="tags-empty-hint">No tags assigned yet</span>
+        </div>
+
+        <div class="tag-input-wrap">
+          <input type="text" id="customTagInput" class="tag-input" placeholder="Type a tag name (e.g. Gaming, Music, Tutorials)..." maxlength="24">
+          <button id="addCustomTagBtn" class="btn btn--primary btn--sm">
+            <svg viewBox="0 0 24 24" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2"/></svg>
+            <span>Add Tag</span>
+          </button>
+        </div>
+
+        <div class="modal-section-label">Quick Suggestions:</div>
+        <div class="quick-tags-wrap" id="modalQuickTags">
+          <!-- Dynamically populated with default suggestions & user-created tags -->
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="saveTagModalBtn" class="btn btn--primary">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PLAYLIST SELECTION / MANAGEMENT MODAL ============ -->
+  <div id="playlistModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg viewBox="0 0 24 24" width="20" height="20" class="modal-icon"><path d="M19 11H5m14-4H5m14 8H5m14 4h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="18" x2="18" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="20" x2="20" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <h3 class="modal-title">Save video to...</h3>
+        </div>
+        <button id="closePlaylistModalBtn" class="icon-btn icon-btn--sm" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-subtitle" id="playlistModalVideoTitle">Video Title</p>
+
+        <div class="playlist-checkbox-list" id="playlistCheckboxList">
+          <!-- Dynamically populated list of playlists with checkboxes -->
+        </div>
+
+        <div class="playlist-create-box">
+          <div class="modal-section-label">Create a new playlist:</div>
+          <div class="playlist-input-wrap">
+            <input type="text" id="newPlaylistInput" class="tag-input" placeholder="Enter playlist title..." maxlength="40">
+            <button id="createNewPlaylistBtn" class="btn btn--primary btn--sm">
+              <svg viewBox="0 0 24 24" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2"/></svg>
+              <span>Create</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="donePlaylistModalBtn" class="btn btn--primary">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CHANNELS 4-CHOICES POPUP MODAL (YouTube Style) ============ -->
+  <div id="channelsChoiceModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card channels-choice-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg viewBox="0 0 24 24" width="22" height="22" class="modal-icon" style="color: #ff0000;"><path d="M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H4V9h16v10zM10 10.5v7l6-3.5z" fill="currentColor"/><path d="M18 3H6c-.55 0-1 .45-1 1s.45 1 1 1h12c.55 0 1-.45 1-1s-.45-1-1-1z" fill="currentColor"/></svg>
+          <h3 class="modal-title">Channels</h3>
+        </div>
+        <button id="closeChannelsChoiceModalBtn" class="icon-btn icon-btn--sm" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p class="channels-choice-intro">Select an action or view to manage your creator channels and collections:</p>
+        
+        <div class="channels-choice-grid">
+          <!-- Choice 1: New Channel -->
+          <button class="channel-choice-btn channel-choice-btn--create" id="choiceNewChannelBtn">
+            <div class="choice-icon-wrap choice-icon-wrap--red">
+              <svg viewBox="0 0 24 24" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+            </div>
+            <div class="choice-text">
+              <span class="choice-title">New Channel</span>
+              <span class="choice-desc">Create a brand new channel with custom name, avatar, and handle</span>
+            </div>
+            <div class="choice-arrow">
+              <svg viewBox="0 0 24 24" width="16" height="16"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            </div>
+          </button>
+
+          <!-- Choice 2: Subscribed Channels -->
+          <button class="channel-choice-btn" id="choiceSubscribedBtn">
+            <div class="choice-icon-wrap choice-icon-wrap--blue">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2"/></svg>
+            </div>
+            <div class="choice-text">
+              <span class="choice-title">Subscribed Channels</span>
+              <span class="choice-desc">View feed of videos only from channels you are subscribed to</span>
+            </div>
+            <div class="choice-badge" id="choiceSubCountBadge">0</div>
+          </button>
+
+          <!-- Choice 3: Videos Without a Channel -->
+          <button class="channel-choice-btn" id="choiceNoChannelBtn">
+            <div class="choice-icon-wrap choice-icon-wrap--gray">
+              <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" fill="none" stroke-dasharray="3 3"/><path d="M12 12c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-1.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/></svg>
+            </div>
+            <div class="choice-text">
+              <span class="choice-title">Videos Without a Channel</span>
+              <span class="choice-desc">Unassigned videos showing default YouTube gray channel avatar</span>
+            </div>
+            <div class="choice-badge" id="choiceNoChannelCountBadge">0</div>
+          </button>
+
+          <!-- Choice 4: All Channels -->
+          <button class="channel-choice-btn" id="choiceAllChannelsBtn">
+            <div class="choice-icon-wrap choice-icon-wrap--purple">
+              <svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            </div>
+            <div class="choice-text">
+              <span class="choice-title">All Channels</span>
+              <span class="choice-desc">Explore, browse, edit, and manage all your created channels</span>
+            </div>
+            <div class="choice-badge" id="choiceAllChannelsCountBadge">0</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CREATE / EDIT CHANNEL MODAL ============ -->
+  <div id="createChannelModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg viewBox="0 0 24 24" width="20" height="20" class="modal-icon"><path d="M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H4V9h16v10zM10 10.5v7l6-3.5z" fill="currentColor"/></svg>
+          <h3 class="modal-title" id="createChannelModalTitle">Create New Channel</h3>
+        </div>
+        <button id="closeCreateChannelModalBtn" class="icon-btn icon-btn--sm" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="channel-preview-banner" id="createChannelPreviewBanner">
+          <div class="channel-preview-avatar-wrap">
+            <div class="channel-preview-avatar" id="createChannelPreviewAvatar" title="Channel Logo">C</div>
+          </div>
+          <div class="channel-preview-info">
+            <div class="channel-preview-name" id="createChannelPreviewName">Channel Name</div>
+            <div class="channel-preview-handle" id="createChannelPreviewHandle">@channel</div>
+            <div class="channel-preview-logo-status" id="channelPreviewLogoStatus">Using initial letters avatar</div>
+          </div>
+        </div>
+
+        <!-- Custom Channel Logo File Input -->
+        <input type="file" id="channelLogoFileInput" accept="image/*" style="display: none;">
+
+        <div class="form-group channel-logo-upload-group">
+          <label class="modal-section-label">Channel Logo (From Your Device)</label>
+          <div class="channel-logo-actions-row">
+            <button type="button" id="channelChooseLogoBtn" class="btn btn--secondary btn--sm">
+              <svg viewBox="0 0 24 24" width="15" height="15"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <span>Choose Image File...</span>
+            </button>
+            <button type="button" id="removeChannelLogoBtn" class="btn btn--danger-sm btn--sm" style="display: none;" title="Remove custom logo and use initials">
+              <svg viewBox="0 0 24 24" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+              <span>Remove Logo</span>
+            </button>
+          </div>
+          <p class="modal-help-text">Select any JPG, PNG, WebP image. It will be saved to your browser storage and remembered every time you refresh.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="modal-section-label" for="channelNameInput">Channel Name *</label>
+          <input type="text" id="channelNameInput" class="tag-input" placeholder="e.g. Veristasium, Fireship, Tech Quickie..." maxlength="35" required>
+        </div>
+
+        <div class="form-group">
+          <label class="modal-section-label" for="channelHandleInput">Channel Handle (@...)</label>
+          <input type="text" id="channelHandleInput" class="tag-input" placeholder="e.g. tech_quickie (will be @handle)" maxlength="30">
+        </div>
+
+        <div class="form-group">
+          <div class="color-picker-header-row">
+            <label class="modal-section-label" for="channelCustomColorPicker">Channel Avatar & Theme Color</label>
+            <span class="channel-color-hex-tag" id="channelColorHexTag">#FF0000</span>
+          </div>
+          <div class="channel-color-controls">
+            <div class="channel-color-palette" id="channelColorPalette">
+              <!-- Swatches dynamically generated from palette and presets -->
+            </div>
+            
+            <div class="custom-color-wheel-wrapper">
+              <div class="color-wheel-picker-wrap" title="Choose any custom color from the color wheel">
+                <input type="color" id="channelCustomColorPicker" class="custom-color-picker-input" value="#ff0000" aria-label="Choose custom color from color wheel">
+                <label for="channelCustomColorPicker" class="color-wheel-btn" id="channelColorWheelBtn" title="Click to open Color Wheel">
+                  <span class="color-wheel-disc"></span>
+                  <span class="color-wheel-label">Color Wheel</span>
+                </label>
+              </div>
+              <div class="hex-input-wrap" title="Or type any hex color code">
+                <span class="hex-input-hash">#</span>
+                <input type="text" id="channelColorHexInput" class="channel-hex-input" maxlength="6" placeholder="FF0000" spellcheck="false" aria-label="Hex color code">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="desc-header-row">
+            <label class="modal-section-label" for="channelDescInput">Description (Optional)</label>
+            <span class="desc-char-counter" id="channelDescCharCounter">0 / 5,000</span>
+          </div>
+          <textarea id="channelDescInput" class="tag-input channel-desc-textarea" placeholder="Tell viewers what this channel is about... Supports multiple paragraphs, links, and detailed summaries." maxlength="5000" rows="5"></textarea>
+          <p class="modal-help-text">Share your channel's mission, topics, and upload schedules. Formatted paragraphs will appear on your channel's page and About tab.</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="cancelCreateChannelBtn" class="btn btn--secondary">Cancel</button>
+        <button id="saveCreateChannelBtn" class="btn btn--primary">Save Channel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ASSIGN VIDEO TO CHANNEL & COLLABS MODAL ============ -->
+  <div id="assignChannelModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card modal-card--assign-channel">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg viewBox="0 0 24 24" width="18" height="18" class="modal-icon"><path d="M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H4V9h16v10zM10 10.5v7l6-3.5z" fill="currentColor"/></svg>
+          <h3 class="modal-title">Channel & Collaborations</h3>
+        </div>
+        <button id="closeAssignChannelModalBtn" class="icon-btn icon-btn--sm" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-subtitle" id="assignChannelVideoTitle">Select a primary channel and co-creators for this video:</p>
+
+        <!-- Channel Quick Search Filter -->
+        <div class="assign-channel-search-box">
+          <div class="assign-search-input-wrap">
+            <svg viewBox="0 0 24 24" width="14" height="14" class="assign-search-icon"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"/></svg>
+            <input type="text" id="assignChannelSearchInput" class="assign-search-input" placeholder="Search channels by name or @handle..." autocomplete="off">
+            <button type="button" id="clearAssignChannelSearchBtn" class="assign-search-clear" style="display: none;" title="Clear search" aria-label="Clear channel search">&times;</button>
+          </div>
+        </div>
+
+        <!-- 2-Column Responsive Grid -->
+        <div class="assign-channel-grid">
+          <!-- 1. Primary Channel -->
+          <div class="modal-section-group" style="margin-bottom:0;">
+            <div class="modal-section-label">1. Primary Creator</div>
+            <div class="channel-radio-list" id="channelRadioList">
+              <!-- Dynamically populated with channels + No Channel option -->
+            </div>
+          </div>
+
+          <!-- 2. Collab Channels (YouTube Collabs) -->
+          <div class="modal-section-group" id="collabSectionGroup" style="margin-bottom:0;">
+            <div class="collab-header-row">
+              <div class="modal-section-label" style="margin-bottom:0; display:flex; align-items:center; gap:5px;">
+                <span>🤝</span>
+                <span>2. Collaborators</span>
+              </div>
+              <span class="collab-selected-pill" id="collabSelectedCount">0 collabs</span>
+            </div>
+            <div class="collab-checkbox-list" id="collabCheckboxList">
+              <!-- Dynamically populated collaborator checkboxes -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Live Attribution Preview -->
+        <div class="collab-live-preview-box" id="collabLivePreviewBox">
+          <div class="collab-preview-header">Attribution Preview:</div>
+          <div class="collab-preview-content" id="collabPreviewContent">
+            <!-- Dynamic preview -->
+          </div>
+        </div>
+
+        <div class="quick-channel-create-box">
+          <div class="modal-section-label" style="margin-bottom:4px;">Quick Create Channel:</div>
+          <div class="playlist-input-wrap">
+            <input type="text" id="quickChannelInput" class="tag-input" placeholder="New channel name..." maxlength="35">
+            <button id="quickCreateChannelBtn" class="btn btn--primary btn--sm">
+              <svg viewBox="0 0 24 24" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2"/></svg>
+              <span>Create</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="cancelAssignChannelBtn" class="btn btn--secondary btn--sm">Cancel</button>
+        <button id="doneAssignChannelBtn" class="btn btn--primary btn--sm">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ADD MULTIPLE VIDEOS TO CHANNEL MODAL ============ -->
+  <div id="channelAddVideosModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card modal-card--wide">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg viewBox="0 0 24 24" width="20" height="20" class="modal-icon"><polygon points="12 2 2 7 12 12 22 7 12 2" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="2 17 12 22 22 17" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="2 12 12 17 22 12" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          <h3 class="modal-title" id="channelAddVideosTitle">Add Videos to Channel</h3>
+        </div>
+        <button id="closeChannelAddVideosModalBtn" class="icon-btn icon-btn--sm" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="channel-add-filter-row">
+          <input type="text" id="channelAddVideoSearch" class="tag-input" placeholder="Search videos in library...">
+          <button id="channelAddSelectAllBtn" class="btn btn--secondary btn--sm">Select All</button>
+          <button id="channelAddDeselectAllBtn" class="btn btn--secondary btn--sm">Deselect All</button>
+        </div>
+
+        <div class="channel-videos-checklist" id="channelVideosChecklist">
+          <!-- Dynamically populated video items with checkboxes -->
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <span class="selected-count-label" id="channelAddSelectedCount">0 videos selected</span>
+        <button id="saveChannelVideosBtn" class="btn btn--primary">Save Videos to Channel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ UPLOAD ORIGINAL THUMBNAIL MODAL ============ -->
+  <div id="uploadThumbnailModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg viewBox="0 0 24 24" width="20" height="20" class="modal-icon"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          <h3 class="modal-title">Upload Video Thumbnail</h3>
+        </div>
+        <button id="closeUploadThumbnailModalBtn" class="icon-btn icon-btn--sm" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-subtitle" id="thumbModalVideoTitle">Video Title</p>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <button type="button" id="thumbTabFileBtn" class="btn btn--secondary btn--sm is-active">Upload Image File</button>
+          <button type="button" id="thumbTabUrlBtn" class="btn btn--secondary btn--sm">Paste YouTube / Image Link</button>
+        </div>
+
+        <div class="thumb-preview-container" style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px; background: #181818; padding: 12px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+          <div id="thumbModalPreviewBox" style="width: 160px; height: 90px; background: #222; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;">
+            <img id="thumbModalPreviewImg" src="" alt="Thumbnail preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            <div id="thumbModalPreviewPlaceholder" style="color: var(--text-muted); font-size: 11px; text-align: center; padding: 4px;">No custom image</div>
+            <span id="thumbModalCustomBadge" style="position: absolute; top: 4px; right: 4px; background: var(--accent-blue); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; display: none;">CUSTOM</span>
+          </div>
+          <div style="flex: 1; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
+            <p>Upload a custom picture (.jpg, .png, .webp) or fetch directly from a YouTube video URL.</p>
+            <button type="button" id="thumbResetFrameBtn" class="btn btn--ghost-sm" style="margin-top: 6px; padding: 4px 8px; font-size: 11px; width: auto;">Reset to Video Frame</button>
+          </div>
+        </div>
+
+        <!-- File Tab Pane -->
+        <div id="thumbFilePane" style="display: flex; flex-direction: column; gap: 10px;">
+          <input type="file" id="thumbFileInput" accept="image/*" style="display: none;">
+          <div id="thumbDropZone" style="border: 2px dashed #444; border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; background: rgba(255,255,255,0.02); transition: all 0.2s ease;">
+            <svg viewBox="0 0 24 24" width="32" height="32" style="color: var(--accent-blue); margin-bottom: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="2"/></svg>
+            <p style="font-size: 13px; color: var(--text-primary); font-weight: 500; margin-bottom: 4px;">Drag & drop image here or click to browse</p>
+            <p style="font-size: 11px; color: var(--text-muted);">Supports JPG, PNG, WEBP, AVIF</p>
+            <button type="button" id="thumbBrowseBtn" class="btn btn--secondary btn--sm" style="margin-top: 10px;">Browse Files...</button>
+          </div>
+        </div>
+
+        <!-- URL Tab Pane -->
+        <div id="thumbUrlPane" style="display: none; flex-direction: column; gap: 10px;">
+          <label class="modal-section-label" for="thumbUrlInput">YouTube Video Link or Image URL</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="thumbUrlInput" class="tag-input" placeholder="https://www.youtube.com/watch?v=... or image URL">
+            <button type="button" id="thumbFetchUrlBtn" class="btn btn--secondary btn--sm">Fetch</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="cancelUploadThumbnailBtn" class="btn btn--secondary btn--sm">Cancel</button>
+        <button id="saveUploadThumbnailBtn" class="btn btn--primary btn--sm" disabled>Save Thumbnail</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification element -->
+  <div id="appToast" class="app-toast"></div>
+
+  <!-- Off-screen canvas for thumbnail extraction -->
+  <canvas id="thumbGenCanvas" width="480" height="270" style="display:none;"></canvas>
+
+  <!-- Main JavaScript File -->
+  <script src="app.js"></script>
+</body>
+</html>
